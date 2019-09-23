@@ -868,7 +868,6 @@ int rd_kafka_OffsetCommitRequest (rd_kafka_broker_t *rkb,
         int PartCnt = 0;
 	int tot_PartCnt = 0;
         int i;
-
         int16_t ApiVersion;
         int features;
 
@@ -1074,6 +1073,8 @@ void rd_kafka_SyncGroupRequest (rd_kafka_broker_t *rkb,
                                          RD_KAFKAP_STR_SIZE(group_id) +
                                          4 /* GenerationId */ +
                                          RD_KAFKAP_STR_SIZE(member_id) +
+                                         RD_KAFKAP_STR_SIZE(
+                                                 group_instance_id) +
                                          4 /* array size group_assignment */ +
                                          (assignment_cnt * 100/*guess*/));
         rd_kafka_buf_write_kstr(rkbuf, group_id);
@@ -1133,13 +1134,9 @@ void rd_kafka_handle_SyncGroup (rd_kafka_t *rk,
                 goto err;
         }
 
-        if (request->rkbuf_reqhdr.ApiVersion >= 1) {
-                int32_t Throttle_Time;
-                rd_kafka_buf_read_i32(rkbuf, &Throttle_Time);
+        if (request->rkbuf_reqhdr.ApiVersion >= 1)
+                rd_kafka_buf_read_throttle_time(rkbuf);
 
-                rd_kafka_op_throttle_time(rkb, rkb->rkb_rk->rk_rep,
-                                          Throttle_Time);
-        }
 
         rd_kafka_buf_read_i16(rkbuf, &ErrorCode);
         rd_kafka_buf_read_bytes(rkbuf, &MemberState);
@@ -1262,7 +1259,7 @@ void rd_kafka_JoinGroupRequest (rd_kafka_broker_t *rkb,
             rd_interval(&rkb->rkb_suppress.unsupported_kip345,
                         /* at most once per day */
                         (rd_ts_t)86400 * 1000 * 1000, 0) > 0)
-                rd_rkb_log(rkb, LOG_NOTICE, "MAXPOLL",
+                rd_rkb_log(rkb, LOG_NOTICE, "STATICMEMBER",
                            "Broker does not support KIP-345 "
                            "(requires Apache Kafka >= v2.3.0): "
                            "consumer configuration "

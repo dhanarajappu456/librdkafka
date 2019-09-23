@@ -1060,7 +1060,7 @@ err:
                 if (ErrorCode == RD_KAFKA_RESP_ERR_UNKNOWN_MEMBER_ID)
                         rd_kafka_cgrp_set_member_id(rkcg, "");
 
-                /* KIP-394 require member.id on initial join group request */
+                /* KIP-394 requires member.id on initial join group request */
                 if (ErrorCode == RD_KAFKA_RESP_ERR_MEMBER_ID_REQUIRED) {
                         char *my_member_id;
                         RD_KAFKAP_STR_DUPA(&my_member_id, &MyMemberId);
@@ -1383,9 +1383,9 @@ void rd_kafka_cgrp_handle_Heartbeat (rd_kafka_t *rk,
                 goto err;
         }
 
-
         if (request->rkbuf_reqhdr.ApiVersion >= 1)
                 rd_kafka_buf_read_throttle_time(rkbuf);
+
         rd_kafka_buf_read_i16(rkbuf, &ErrorCode);
 
 err:

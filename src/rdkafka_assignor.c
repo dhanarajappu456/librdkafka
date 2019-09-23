@@ -68,8 +68,8 @@ int rd_kafka_group_member_cmp (const void *_a, const void *_b) {
                 (const rd_kafka_group_member_t *)_b;
 
         /* Use the group instance id to compare static group members */
-        if (!RD_KAFKAP_STR_IS_NULL(a->rkgm_group_instance_id)
-            && !RD_KAFKAP_STR_IS_NULL(b->rkgm_group_instance_id))
+        if (!RD_KAFKAP_STR_IS_NULL(a->rkgm_group_instance_id) &&
+            !RD_KAFKAP_STR_IS_NULL(b->rkgm_group_instance_id))
                 return rd_kafkap_str_cmp(a->rkgm_group_instance_id,
                                          b->rkgm_group_instance_id);
 

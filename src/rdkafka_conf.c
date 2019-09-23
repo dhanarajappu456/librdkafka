@@ -845,10 +845,12 @@ static const struct rd_kafka_property rd_kafka_properties[] = {
           "belong to the same group." },
         { _RK_GLOBAL|_RK_CGRP|_RK_MED, "group.instance.id", _RK_C_STR,
           _RK(group_instance_id),
-          "Setting this property enables static group membership. "
+          "Enables static group membership. "
           "Static group members are able to leave and rejoin a group "
           "within the configured session.timeout without prompting a "
-          "group rebalance. Each member of the group must have a unique id." },
+          "group rebalance. Each member of the group must have a "
+          "unique group instance id."
+          "Requires broker version >= 2.3.0"},
         { _RK_GLOBAL|_RK_CGRP|_RK_MED, "partition.assignment.strategy",
           _RK_C_STR,
           _RK(partition_assignment_strategy),

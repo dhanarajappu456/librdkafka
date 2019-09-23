@@ -2260,6 +2260,41 @@ test_consume_msgs_easy (const char *group_id, const char *topic,
 
 
 /**
+ * @brief Waits for up to \p timeout_ms for consumer to receive assignment.
+ *        If no assignment received without the timeout the test fails.
+ */
+void test_consumer_wait_assignment (rd_kafka_t *rk) {
+        rd_kafka_topic_partition_list_t *assignment = NULL;
+        int i;
+
+        while (1) {
+                rd_kafka_resp_err_t err;
+
+                err = rd_kafka_assignment(rk, &assignment);
+                TEST_ASSERT(!err, "rd_kafka_assignment() failed: %s",
+                            rd_kafka_err2str(err));
+
+                if (assignment->cnt > 0)
+                        break;
+
+                rd_kafka_topic_partition_list_destroy(assignment);
+
+                test_consumer_poll_once(rk, NULL, 1000);
+        }
+
+        TEST_SAY("Assignment (%d partition(s)): ", assignment->cnt);
+        for (i = 0 ; i < assignment->cnt ; i++)
+                TEST_SAY0("%s%s[%"PRId32"]",
+                          i == 0 ? "" : ", ",
+                          assignment->elems[i].topic,
+                          assignment->elems[i].partition);
+        TEST_SAY0("\n");
+
+        rd_kafka_topic_partition_list_destroy(assignment);
+}
+
+
+/**
  * @brief Start subscribing for 'topic'
  */
 void test_consumer_subscribe (rd_kafka_t *rk, const char *topic) {
