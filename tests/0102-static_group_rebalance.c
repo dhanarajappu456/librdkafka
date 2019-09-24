@@ -32,7 +32,7 @@
  * @name KafkaConsumer static membership tests
  *
  * Runs two consumers subscribing to a topic simulating various
- * rebalance scenerios.
+ * rebalance scenarios.
  */
 
 typedef struct _consumer_s {
@@ -42,7 +42,7 @@ typedef struct _consumer_s {
 } _consumer_t;
 
 /**
- * Calls poll to serve any pending callbacks. Blocks up to timeout_s + 100 ms
+ * @brief Calls poll to serve any pending callbacks. Blocks up to timeout_s + 100 ms
  */
 static void do_consume (_consumer_t *cons, int timeout_s) {
         rd_kafka_message_t *rkm;
@@ -51,10 +51,10 @@ static void do_consume (_consumer_t *cons, int timeout_s) {
         if (!rkm)
                 return;
 
-        if (rkm->err)
-                TEST_SAY("%s consumer error: %s",
-                         rd_kafka_name(cons->rk),
-                         rd_kafka_message_errstr(rkm));
+        TEST_ASSERT(!rkm->err,
+                    "%s consumer error: %s",
+                    rd_kafka_name(cons->rk),
+                    rd_kafka_message_errstr(rkm));
 
         rd_kafka_message_destroy(rkm);
 
@@ -163,7 +163,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
 
         /* The topic prefix uses the test id which is "random" */
         test_create_topic(c[0].rk, tsprintf("%snew", topic), 1, 1);
-        do_consume(&c[0], 1);
+        do_consume(&c[0], 1/*1s*/);
         do_consume(&c[1], 1/*1s*/);
         test_consumer_wait_assignment(c[0].rk);
 
@@ -177,7 +177,8 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         /* 3x heartbeat interval to give time for c[0] to recognize rebalance */
         rd_sleep(9);
 
-        rd_kafka_flush(c[0].rk, 5000);
+        do_consume(c[0].rk, 5/*5s*/);
+
         TEST_ASSERT(c[0].assign_cnt == c[0].max_rebalance_cnt,
                     "c[0] rebalanced %d times, expected %d",
                     c[0].assign_cnt, c[0].max_rebalance_cnt);

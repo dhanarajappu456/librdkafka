@@ -198,6 +198,7 @@ _TEST_DECL(0098_consumer_txn);
 _TEST_DECL(0099_commit_metadata);
 _TEST_DECL(0100_thread_interceptors);
 _TEST_DECL(0102_static_group_rebalance);
+
 /* Manual tests */
 _TEST_DECL(8000_idle);
 

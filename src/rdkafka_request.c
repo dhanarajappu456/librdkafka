@@ -944,7 +944,7 @@ int rd_kafka_OffsetCommitRequest (rd_kafka_broker_t *rkb,
 
                 /* v1: TimeStamp */
                 if (ApiVersion == 1)
-                        rd_kafka_buf_write_i64(rkbuf, -1);// FIXME: retention time
+                        rd_kafka_buf_write_i64(rkbuf, -1);
 
                 /* Metadata */
 		/* Java client 0.9.0 and broker <0.10.0 can't parse
@@ -1315,6 +1315,7 @@ void rd_kafka_LeaveGroupRequest (rd_kafka_broker_t *rkb,
                                          RD_KAFKAP_STR_SIZE(member_id));
         rd_kafka_buf_write_kstr(rkbuf, group_id);
         rd_kafka_buf_write_kstr(rkbuf, member_id);
+
         rd_kafka_buf_ApiVersion_set(rkbuf, ApiVersion, 0);
 
         /* LeaveGroupRequests are best-effort, the local consumer
