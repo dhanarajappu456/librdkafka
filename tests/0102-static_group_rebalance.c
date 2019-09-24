@@ -108,7 +108,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         rd_kafka_conf_t *conf;
         const int msgcnt = 100;
         const char *topic = test_mk_topic_name("0102_static_group_rebalance", 1);
-        const char *subscription = rd_strdup(tsprintf("^%s.*", topic));
+        char *subscription = rd_strdup(tsprintf("^%s.*", topic));
         _consumer_t c[_CONSUMER_CNT] = RD_ZERO_INIT;
 
         test_create_topic(NULL, topic, 3, 1);
@@ -148,7 +148,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
          * should not prompt a rebalance for the remaining member.
          */
         c[1].max_rebalance_cnt++;
-        c[1].rk = test_create_consumer("static", rebalance_cb,
+        c[1].rk = test_create_consumer(topic, rebalance_cb,
                                        conf, NULL);
         test_consumer_subscribe(c[1].rk, subscription);
 
@@ -177,8 +177,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         /* 3x heartbeat interval to give time for c[0] to recognize rebalance */
         rd_sleep(9);
 
-        do_consume(&c[0], 1/*1s*/);
-
+        rd_kafka_flush(c[0].rk, 5000);
         TEST_ASSERT(c[0].assign_cnt == c[0].max_rebalance_cnt,
                     "c[0] rebalanced %d times, expected %d",
                     c[0].assign_cnt, c[0].max_rebalance_cnt);
@@ -186,7 +185,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         TEST_SAY("Closing remaining consumers\n");
         test_consumer_close(c[0].rk);
         rd_kafka_destroy(c[0].rk);
-        rd_kafka_conf_destroy(conf);
+        free(subscription);
 
         return 0;
 }
