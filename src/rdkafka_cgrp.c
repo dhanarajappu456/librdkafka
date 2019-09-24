@@ -2228,10 +2228,11 @@ static void rd_kafka_cgrp_unassign_done (rd_kafka_cgrp_t *rkcg,
                 rkcg->rkcg_flags &= ~RD_KAFKA_CGRP_F_LEAVE_ON_UNASSIGN;
 
         /*
-         * KIP-345: Static group members will call unsubscribe to release their partions
-         * but must not send a LeaveGroupRequest.
+         * KIP-345: Static group members must not send a LeaveGroupRequest
+         * on termination.
          */
-        if (RD_KAFKA_CGRP_IS_STATIC_MEMBER(rkcg))
+        if (RD_KAFKA_CGRP_IS_STATIC_MEMBER(rkcg) &&
+            rkcg->rkcg_flags & RD_KAFKA_CGRP_F_TERMINATE)
                 rkcg->rkcg_flags &= ~RD_KAFKA_CGRP_F_LEAVE_ON_UNASSIGN;
 
 	if (rkcg->rkcg_flags & RD_KAFKA_CGRP_F_LEAVE_ON_UNASSIGN) {

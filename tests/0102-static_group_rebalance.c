@@ -37,7 +37,8 @@
 
 typedef struct _consumer_s {
         rd_kafka_t *rk;
-        int assign_cnt;
+        char *client_id;
+        int rebalance_cnt;
         int max_rebalance_cnt;
 } _consumer_t;
 
@@ -60,7 +61,7 @@ static void do_consume (_consumer_t *cons, int timeout_s) {
 
         if (timeout_s > 0) {
                 TEST_SAY("%s: simulate processing by sleeping for %ds\n",
-                         rd_kafka_name(cons->rk), timeout_s);
+                         cons->client_id, timeout_s);
                 rd_sleep(timeout_s);
         }
 }
@@ -73,26 +74,24 @@ static void rebalance_cb (rd_kafka_t *rk,
         _consumer_t *c = opaque;
 
         TEST_SAY("%s rebalance #%d/%d: %s: %d partition(s)\n",
-                 rd_kafka_name(rk),
-                 c->assign_cnt, c->max_rebalance_cnt,
+                 c->client_id,
+                 c->rebalance_cnt, c->max_rebalance_cnt,
                  rd_kafka_err2name(err),
                  parts->cnt);
 
         switch (err)
         {
         case RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS:
-                c->assign_cnt++;
-
-                TEST_ASSERT(c->assign_cnt <= c->max_rebalance_cnt,
-                            "%s rebalanced %d times, max was %d",
-                            rd_kafka_name(rk),
-                            c->assign_cnt, c->max_rebalance_cnt);
-
                 rd_kafka_assign(rk, parts);
-
                 break;  
 
         case RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS:
+                c->rebalance_cnt++;
+                TEST_ASSERT(c->rebalance_cnt <= c->max_rebalance_cnt,
+                            "%s rebalanced %d times, max was %d",
+                            c->client_id,
+                            c->rebalance_cnt, c->max_rebalance_cnt);
+
                 rd_kafka_assign(rk, NULL);
                 break;
 
@@ -109,7 +108,13 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         const int msgcnt = 100;
         const char *topic = test_mk_topic_name("0102_static_group_rebalance", 1);
         char *subscription = rd_strdup(tsprintf("^%s.*", topic));
+
         _consumer_t c[_CONSUMER_CNT] = RD_ZERO_INIT;
+        c[0].max_rebalance_cnt = 0;
+        c[0].rebalance_cnt = 0 ;
+        c[1].max_rebalance_cnt = 0;
+        c[1].rebalance_cnt = 0 ;
+
 
         test_create_topic(NULL, topic, 3, 1);
         test_produce_msgs_easy(topic, test_id_generate(), 0, msgcnt);
@@ -121,16 +126,15 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
 
         rd_kafka_conf_set_opaque(conf, &c[0]);
         test_conf_set(conf, "group.instance.id", "consumer1");
+        c[0].client_id = "constant";
         c[0].rk = test_create_consumer(topic, rebalance_cb,
                                        rd_kafka_conf_dup(conf), NULL);
 
         rd_kafka_conf_set_opaque(conf, &c[1]);
         test_conf_set(conf, "group.instance.id", "consumer2");
+        c[1].client_id = "variant";
         c[1].rk = test_create_consumer(topic, rebalance_cb,
                                        rd_kafka_conf_dup(conf), NULL);
-
-        c[0].max_rebalance_cnt = 1;
-        c[1].max_rebalance_cnt = 1;
 
         test_consumer_subscribe(c[0].rk, subscription);
         test_consumer_subscribe(c[1].rk, subscription);
@@ -140,6 +144,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         test_consumer_wait_assignment(c[1].rk);
 
         TEST_SAY("Bouncing c[1] instance.\n");
+        c[1].max_rebalance_cnt++;
         test_consumer_close(c[1].rk);
         rd_kafka_destroy(c[1].rk);
 
@@ -147,7 +152,6 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
          * Removing and adding a new member with the same group instance id
          * should not prompt a rebalance for the remaining member.
          */
-        c[1].max_rebalance_cnt++;
         c[1].rk = test_create_consumer(topic, rebalance_cb,
                                        conf, NULL);
         test_consumer_subscribe(c[1].rk, subscription);
@@ -156,34 +160,40 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         test_consumer_wait_assignment(c[1].rk);
         do_consume(&c[0], 1/*1s*/);
 
-        TEST_SAY("Creating a new topic.\n");
-        /* Expanding the subscription forces a rebalance */
-        c[0].max_rebalance_cnt++;
+        TEST_SAY("Expanding subscription with new topic\n");
         c[1].max_rebalance_cnt++;
+        c[0].max_rebalance_cnt++;
 
         /* The topic prefix uses the test id which is "random" */
         test_create_topic(c[0].rk, tsprintf("%snew", topic), 1, 1);
-        do_consume(&c[0], 1/*1s*/);
         do_consume(&c[1], 1/*1s*/);
+        do_consume(&c[0], 1/*1s*/);
+
         test_consumer_wait_assignment(c[0].rk);
+
+        do_consume(&c[1], 1/*1s*/);
+        do_consume(&c[0], 1/*1s*/);
 
         /* Wait until session.timeout.ms is exceeded to force a rebalance. */
         TEST_SAY("Closing c[1], waiting for static instance to be evicted.\n");
-        c[0].max_rebalance_cnt++;
+        c[1].max_rebalance_cnt++;
 
         test_consumer_close(c[1].rk);
         rd_kafka_destroy(c[1].rk);
 
         /* 3x heartbeat interval to give time for c[0] to recognize rebalance */
         rd_sleep(9);
+        c[0].max_rebalance_cnt++;
 
-        do_consume(c[0].rk, 5/*5s*/);
+        /* Wait for rebalance */
+        do_consume(&c[0], 5/*1s*/);
 
-        TEST_ASSERT(c[0].assign_cnt == c[0].max_rebalance_cnt,
+        TEST_ASSERT(c[0].rebalance_cnt == c[0].max_rebalance_cnt,
                     "c[0] rebalanced %d times, expected %d",
-                    c[0].assign_cnt, c[0].max_rebalance_cnt);
+                    c[0].rebalance_cnt, c[0].max_rebalance_cnt);
 
         TEST_SAY("Closing remaining consumers\n");
+        c[0].max_rebalance_cnt++;
         test_consumer_close(c[0].rk);
         rd_kafka_destroy(c[0].rk);
         free(subscription);

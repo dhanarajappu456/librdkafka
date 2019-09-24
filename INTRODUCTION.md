@@ -1283,7 +1283,7 @@ see KafkaConsumer in rdkafka.h or rdkafkacpp.h
 By default Kafka consumers are rebalanced each time a new consumer joins
 the group or an existing member leaves. This is what is known as a dynamic
 membership. Apache Kafka >= 2.3.0 introduces static membership.
-Unlike dynamic membership members can leave and rejoin a group
+Unlike dynamic membership, members can leave and rejoin a group
 within the `session.timeout.ms` without triggering a rebalance.
 To enable static group membership configure each consumer instance
 in the group with a unique `group.instance.id`.
