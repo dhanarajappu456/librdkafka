@@ -3457,12 +3457,6 @@ int rd_kafka_conf_warn (rd_kafka_t *rk) {
                                      rk->rk_conf.socket_timeout_ms);
         }
 
-        if (rd_kafka_conf_is_modified(&rk->rk_conf, "max.poll.interval.ms") &&
-            RD_KAFKA_CGRP_IS_STATIC_MEMBER(rk->rk_cgrp))
-                rd_kafka_log(rk, LOG_WARNING,
-                             "CONFWARN", "Configuration property "
-                             "`max.poll.interval.ms` has no effect when "
-                             "static group membership is enabled.");
         return cnt;
 }
 

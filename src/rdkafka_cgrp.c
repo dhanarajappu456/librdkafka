@@ -1754,12 +1754,11 @@ rd_kafka_cgrp_partitions_fetch_start0 (rd_kafka_cgrp_t *rkcg,
                  * using static group membership.
                  */
 
-                if (!RD_KAFKA_CGRP_IS_STATIC_MEMBER(rkcg))
-                        rd_kafka_timer_start(&rkcg->rkcg_rk->rk_timers,
-                                             &rkcg->rkcg_max_poll_interval_tmr,
-                                             500 * 1000ll /* 500ms */,
-                                             rd_kafka_cgrp_max_poll_interval_check_tmr_cb,
-                                             rkcg);
+                rd_kafka_timer_start(&rkcg->rkcg_rk->rk_timers,
+                                &rkcg->rkcg_max_poll_interval_tmr,
+                                500 * 1000ll /* 500ms */,
+                                rd_kafka_cgrp_max_poll_interval_check_tmr_cb,
+                                rkcg);
 
                 for (i = 0 ; i < assignment->cnt ; i++) {
                         rd_kafka_topic_partition_t *rktpar =
@@ -2657,8 +2656,13 @@ rd_kafka_cgrp_max_poll_interval_check_tmr_cb (rd_kafka_timers_t *rkts,
         /* Leave the group before calling rebalance since the standard leave
          * will be triggered first after the rebalance callback has been served.
          * But since the application is blocked still doing processing
-         * that leave will be further delayed. */
-        rd_kafka_cgrp_leave(rkcg);
+         * that leave will be further delayed.
+         *
+         * KIP-345: static group members should continue to respect
+         * `max.poll.interval.ms`but should not send a LeaveGroupRequest.
+         */
+        if (!RD_KAFKA_CGRP_IS_STATIC_MEMBER(rkcg))
+                rd_kafka_cgrp_leave(rkcg);
 
         /* Leaving the group invalidates the member id, reset it now
          * to avoid an ERR_UNKNOWN_MEMBER_ID on the next join. */
