@@ -126,6 +126,8 @@ void static_member_restart (_consumer_t *c) {
         rd_kafka_poll_set_consumer(c->rk);
         rd_kafka_subscribe(c->rk, partitions);
 
+        rd_kafka_topic_partition_list_destroy(partitions);
+
         test_consumer_wait_assignment(c->rk, c->mv);
 }
 
@@ -165,6 +167,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         test_conf_set(conf, "group.instance.id", "consumer2");
         c[1].rk = test_create_consumer(topic, rebalance_cb,
                                        rd_kafka_conf_dup(conf), NULL);
+        rd_kafka_conf_destroy(conf);
 
         test_consumer_subscribe(c[0].rk, topics);
         test_consumer_subscribe(c[1].rk, topics);
@@ -224,6 +227,7 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
 
         /* c[1] rejoin group  */
         test_consumer_poll_no_msgs("wait.max.poll", c[1].rk, testid, 500);
+
         /* Wait until session.timeout.ms is exceeded to force a rebalance. */
         TEST_SAY("Closing c[1], waiting for static instance to be evicted.\n");
         static_member_destroy(&c[1]);
@@ -232,6 +236,9 @@ int main_0102_static_group_rebalance (int argc, char **argv) {
         TEST_SAY("Verifying message consumption and closing consumer\n");
         TEST_ASSERT(mv.msgcnt == msgcnt, "Only %d of %d messages were consumed\n", mv.msgcnt, msgcnt);
         static_member_destroy(&c[0]);
+
+        test_msgver_clear(&mv);
+        free(topics);
 
         return 0;
 }

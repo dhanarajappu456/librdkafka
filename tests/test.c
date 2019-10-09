@@ -3346,6 +3346,8 @@ void test_consumer_poll_expect_err (rd_kafka_t *rk, uint64_t testid,
 
                 if (rkmessage->err == err) {
                         TEST_SAY("ERROR: %s\n", rd_kafka_err2str(rkmessage->err));
+                        rd_kafka_message_destroy(rkmessage);
+
                         return;
                 } else if (rkmessage->err) {
                         TEST_FAIL("%s [%"PRId32"] error (offset %"PRId64
