@@ -2259,56 +2259,6 @@ test_consume_msgs_easy (const char *group_id, const char *topic,
         test_msgver_clear(&mv);
 }
 
-
-/**
- * @brief Waits for consumer to receive an assignment.
- * @returns 0 if timeout or 1 for successful assignment
- */
-int test_consumer_wait_timed_assignment (rd_kafka_t *rk, test_msgver_t *mv,
-                                          int timeout_ms) {
-        int i;
-        rd_kafka_topic_partition_list_t *assignment = NULL;
-        int64_t tmout = test_clock() + timeout_ms * 1000;
-
-        TEST_SAY("%s awaiting assignment\n", rd_kafka_name(rk));
-        do {
-                rd_kafka_resp_err_t err;
-
-                err = rd_kafka_assignment(rk, &assignment);
-                TEST_ASSERT(!err, "rd_kafka_assignment() failed: %s",
-                            rd_kafka_err2str(err));
-
-                if (assignment->cnt > 0)
-                        goto assignment_success;
-
-                rd_kafka_topic_partition_list_destroy(assignment);
-
-                test_consumer_poll_once(rk, mv, 1000);
-        } while (timeout_ms < 0 ? 1 : test_clock() <= tmout);
-
-        return 0;
-
-assignment_success:
-        TEST_SAY("%s Assignment (%d partition(s)): ", rd_kafka_name(rk), assignment->cnt);
-        for (i = 0 ; i < assignment->cnt ; i++)
-                TEST_SAY0("%s%s[%"PRId32"]",
-                          i == 0 ? "" : ", ",
-                          assignment->elems[i].topic,
-                          assignment->elems[i].partition);
-        TEST_SAY0("\n");
-
-        rd_kafka_topic_partition_list_destroy(assignment);
-        return 1;
-}
-
-/**
- * @brief Waits for consumer to receive an assignment.
- *        If no assignment received without the timeout the test fails.
- */
-void test_consumer_wait_assignment (rd_kafka_t *rk, test_msgver_t *mv) {
-        test_consumer_wait_timed_assignment(rk, mv, -1);
-}
-
 /**
  * @brief Start subscribing for 'topic'
  */
