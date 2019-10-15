@@ -258,5 +258,5 @@ int main (int argc, char **argv) {
         /* Destroy the consumer */
         rd_kafka_destroy(rk);
 
-        return 0;
+        return 0;// return 0 for the main function
 }
