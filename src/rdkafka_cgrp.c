@@ -1749,9 +1749,6 @@ rd_kafka_cgrp_partitions_fetch_start0 (rd_kafka_cgrp_t *rkcg,
                  * intervalled timer that checks a timestamp
                  * (that is updated on ..poll()).
                  * The timer interval is 2 hz.
-                 *
-                 * KIP-345 disables max.poll.interval.ms when
-                 * using static group membership.
                  */
 
                 rd_kafka_timer_start(&rkcg->rkcg_rk->rk_timers,
